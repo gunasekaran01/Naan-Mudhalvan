@@ -1,0 +1,131 @@
+import nltk
+import re
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+# Download necessary NLTK data (if you haven't already)
+# You only need to run these download lines once
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except LookupError:
+    nltk.download('vader_lexicon')
+
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+
+try:
+    stopwords.words('english')
+except LookupError:
+    nltk.download('stopwords')
+
+
+# --- 1. Sample Social Media Data ---
+social_media_posts = [
+    "I am so happy and excited about the new project! It's going to be amazing. #joyful #success",
+    "Feeling really sad and disappointed with the results today. Everything seems to be going wrong. :(",
+    "This is absolutely frustrating! I can't believe this happened. #angry #fail",
+    "Just watched a terrifying horror movie, I'm still shaking! #scared",
+    "I'm surprised by the unexpected turn of events. Didn't see that coming. #surprise",
+    "This is neutral news, nothing particularly exciting or bad.",
+    "I love spending time with my friends, it's always so much fun!",
+    "Ugh, another terrible day. I hate when things don't go my way.",
+    "Can't wait for the weekend! So much anticipation!",
+    "The customer service was shockingly bad. I am very annoyed."
+]
+
+# --- 2. Text Preprocessing Function (Optional, VADER handles many cases well) ---
+def preprocess_text(text):
+    # Convert to lowercase
+    text = text.lower()
+    # Remove URLs
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+    # Remove user @ references and '#' from hashtags (but keep the hashtag text)
+    text = re.sub(r'\@\w+|\#','', text)
+    # Remove punctuation (optional, VADER can use it)
+    # text = re.sub(r'[^\w\s]', '', text)
+    # Tokenize
+    # tokens = word_tokenize(text)
+    # Remove stopwords (optional, VADER considers them)
+    # stop_words_list = stopwords.words('english')
+    # tokens = [word for word in tokens if word not in stop_words_list]
+    # return " ".join(tokens)
+    return text
+
+# --- 3. Sentiment Analysis and Emotion Interpretation ---
+def analyze_sentiment_and_emotion(posts):
+    analyzer = SentimentIntensityAnalyzer()
+    results = []
+
+    for post in posts:
+        # Preprocess the post (optional)
+        # processed_post = preprocess_text(post) # Uncomment if you want to use preprocessing
+        processed_post = post # VADER often works well with raw text
+
+        # Get VADER sentiment scores
+        vs = analyzer.polarity_scores(processed_post)
+
+        # Interpret sentiment
+        sentiment_label = ""
+        if vs['compound'] >= 0.05:
+            sentiment_label = "Positive"
+        elif vs['compound'] <= -0.05:
+            sentiment_label = "Negative"
+        else:
+            sentiment_label = "Neutral"
+
+        # Basic Emotion Mapping (Conceptual - Can be expanded)
+        # This is a simplified mapping. Real emotion detection is more complex.
+        emotion = "Unknown"
+        if sentiment_label == "Positive":
+            if "happy" in processed_post or "excited" in processed_post or "amazing" in processed_post or "love" in processed_post or "fun" in processed_post:
+                emotion = "Joy/Happiness"
+            elif "anticipation" in processed_post or "can't wait" in processed_post:
+                emotion = "Anticipation"
+            else:
+                emotion = "General Positive"
+        elif sentiment_label == "Negative":
+            if "sad" in processed_post or "disappointed" in processed_post:
+                emotion = "Sadness"
+            elif "frustrating" in processed_post or "angry" in processed_post or "hate" in processed_post or "annoyed" in processed_post:
+                emotion = "Anger/Frustration"
+            elif "terrifying" in processed_post or "scared" in processed_post or "shaking" in processed_post:
+                emotion = "Fear"
+            else:
+                emotion = "General Negative"
+        elif sentiment_label == "Neutral":
+            emotion = "Neutral"
+
+        # For "surprise", VADER might not directly give it.
+        # Compound score might be slightly positive or negative.
+        # You might need keyword spotting for specific emotions like surprise if not strongly valenced.
+        if "surprised" in processed_post or "unexpected" in processed_post:
+            emotion = "Surprise"
+            if sentiment_label == "Neutral" and vs['compound'] > 0: # Slight positive surprise
+                 sentiment_label = "Slightly Positive"
+            elif sentiment_label == "Neutral" and vs['compound'] < 0: # Slight negative surprise
+                 sentiment_label = "Slightly Negative"
+
+
+        results.append({
+            "post": post,
+            "processed_post": processed_post,
+            "sentiment_score": vs,
+            "sentiment_label": sentiment_label,
+            "detected_emotion": emotion
+        })
+    return results
+
+# --- 4. Run Analysis and Print Results ---
+if __name__ == "__main__":
+    analysis_results = analyze_sentiment_and_emotion(social_media_posts)
+
+    for result in analysis_results:
+        print(f"Original Post: {result['post']}")
+        # print(f"Processed Post: {result['processed_post']}") # Uncomment if using preprocessing
+        print(f"Sentiment Scores: {result['sentiment_score']}")
+        print(f"Overall Sentiment: {result['sentiment_label']}")
+        print(f"Potential Emotion: {result['detected_emotion']}")
+        print("-" * 30)
