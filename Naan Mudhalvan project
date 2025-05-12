@@ -3,6 +3,7 @@ import re
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+import pandas as pd
 
 # Download necessary NLTK data (if you haven't already)
 # You only need to run these download lines once
@@ -21,20 +22,8 @@ try:
 except LookupError:
     nltk.download('stopwords')
 
-
-# --- 1. Sample Social Media Data ---
-social_media_posts = [
-    "I am so happy and excited about the new project! It's going to be amazing. #joyful #success",
-    "Feeling really sad and disappointed with the results today. Everything seems to be going wrong. :(",
-    "This is absolutely frustrating! I can't believe this happened. #angry #fail",
-    "Just watched a terrifying horror movie, I'm still shaking! #scared",
-    "I'm surprised by the unexpected turn of events. Didn't see that coming. #surprise",
-    "This is neutral news, nothing particularly exciting or bad.",
-    "I love spending time with my friends, it's always so much fun!",
-    "Ugh, another terrible day. I hate when things don't go my way.",
-    "Can't wait for the weekend! So much anticipation!",
-    "The customer service was shockingly bad. I am very annoyed."
-]
+df = pd.read_csv("/content/drive/MyDrive/csv/Sentimentanalysis.csv", encoding='latin-1') # or 'iso-8859-1' or any other encoding that works
+social_media_posts = df['feedback'].dropna().tolist()
 
 # --- 2. Text Preprocessing Function (Optional, VADER handles many cases well) ---
 def preprocess_text(text):
