@@ -1,0 +1,180 @@
+import pandas as pd
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Download necessary NLTK data
+nltk.download('vader_lexicon')
+
+# Load the dataset
+df = pd.read_csv("Sentimentanalysis.csv", encoding='latin-1').dropna(how='all')
+
+# Initialize sentiment analyzer
+analyzer = SentimentIntensityAnalyzer()
+
+# Enhanced emotion detection function
+def detect_emotion(text):
+    text = str(text).lower()
+    vs = analyzer.polarity_scores(text)
+
+    # First check for explicit emotion words
+    emotion_words = {
+        'happy': ['happy', 'joy', 'excited', 'amazing', 'love', 'fun', 'obsessed',
+                 'perfect', 'wholesome', 'awesome', 'best', 'great', 'fantastic'],
+        'sad': ['sad', 'disappointed', 'depressed', 'crying', 'unhappy', 'upset'],
+        'angry': ['angry', 'mad', 'hate', 'annoyed', 'furious', 'frustrat', 'scam',
+                 'greedy', 'terrible', 'worst', 'awful', 'horrible'],
+        'fear': ['scared', 'fear', 'shaking', 'terrifying', 'afraid'],
+        'surprise': ['surprised', 'unexpected', 'shocked', 'shook', 'mind = blown',
+                   'wow', 'omg', 'holy crap'],
+        'anticipation': ['anticipation', 'can\'t wait', 'looking forward', 'waiting'],
+        'love': ['love', 'adore', 'like', 'fond of'],
+        'disgust': ['disgusting', 'gross', 'revolting', 'sickening'],
+        'neutral': ['neutral', 'okay', 'fine', 'alright', 'average']
+    }
+
+    for emotion, words in emotion_words.items():
+        if any(word in text for word in words):
+            return emotion.capitalize()
+
+    # Fallback to sentiment analysis
+    if vs['compound'] >= 0.05:
+        return "Positive"
+    elif vs['compound'] <= -0.05:
+        return "Negative"
+    else:
+        return "Neutral"
+
+# Add emotion column to dataframe
+df['Emotion'] = df['feedback'].apply(detect_emotion)
+
+# Function to plot emotion distribution
+def plot_emotion_distribution():
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df, y='Emotion', order=df['Emotion'].value_counts().index, palette="viridis")
+    plt.title("Emotion Distribution in Feedback", fontsize=15)
+    plt.xlabel("Count", fontsize=12)
+    plt.ylabel("Emotion", fontsize=12)
+    plt.grid(axis='x', linestyle='--', alpha=0.7)
+    plt.show()
+
+# Function to plot sentiment pie chart
+def plot_sentiment_pie():
+    sentiment = df['Emotion'].map(lambda x: 'Positive' if x in ['Happy', 'Love', 'Surprise']
+                                 else 'Negative' if x in ['Sad', 'Angry', 'Fear', 'Disgust']
+                                 else 'Neutral')
+    sentiment_counts = sentiment.value_counts()
+
+    plt.figure(figsize=(8, 8))
+    plt.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%',
+            colors=['#66b3ff', '#ff9999', '#99ff99'], startangle=90)
+    plt.title("Overall Sentiment Distribution", fontsize=15)
+    plt.show()
+
+# Enhanced query function
+def query_by_emotion(emotion):
+    emotion = emotion.lower()
+    emotion_map = {
+        'happy': ['happy', 'joy', 'positive'],
+        'sad': ['sad', 'sadness'],
+        'angry': ['angry', 'anger', 'frustration'],
+        'fear': ['fear', 'scared'],
+        'surprise': ['surprise', 'shocked'],
+        'anticipation': ['anticipation'],
+        'love': ['love'],
+        'disgust': ['disgust'],
+        'neutral': ['neutral']
+    }
+
+    # Find matching emotion categories
+    matching_emotions = []
+    for key, values in emotion_map.items():
+        if emotion in key or any(emotion in v for v in values):
+            matching_emotions.extend(values)
+
+    if not matching_emotions:
+        print(f"Emotion '{emotion}' not recognized. Try: happy, sad, angry, fear, surprise, anticipation, love, disgust, neutral")
+        return
+
+    results = df[df['Emotion'].str.lower().isin(matching_emotions)]
+
+    if len(results) == 0:
+        print(f"No records found with emotion '{emotion}'")
+    else:
+        print(f"\nFound {len(results)} records with emotion related to '{emotion}':")
+        print("="*100)
+        for _, row in results.iterrows():
+            print(f"S.No: {row['S.No.']:<5} | User ID: {row['User ID']:<10} | User Name: {row['User Name']:<15}")
+            print(f"Feedback: {row['feedback']}")
+            print(f"Emotion: {row['Emotion']}")
+            print("-"*100)
+
+# New function to search by username or user ID
+def search_by_user():
+    print("\nSearch by:")
+    print("1. Username")
+    print("2. User ID")
+    search_choice = input("Enter your choice (1-2): ").strip()
+
+    if search_choice == '1':
+        username = input("Enter username to search: ").strip()
+        results = df[df['User Name'].str.lower() == username.lower()]
+    elif search_choice == '2':
+        user_id = input("Enter user ID to search: ").strip()
+        results = df[df['User ID'].str.lower() == user_id.lower()]
+    else:
+        print("Invalid choice. Returning to main menu.")
+        return
+
+    if len(results) == 0:
+        print("No matching users found.")
+    else:
+        print("\nSearch Results:")
+        print("="*100)
+        for _, row in results.iterrows():
+            print(f"S.No: {row['S.No.']:<5} | User ID: {row['User ID']:<10} | User Name: {row['User Name']:<15}")
+            print(f"Feedback: {row['feedback']}")
+            print(f"Emotion: {row['Emotion']}")
+            print("-"*100)
+
+# Main program
+def main():
+    print("Enhanced Emotion Analysis Program")
+    print("Available emotion categories: happy, sad, angry, fear, surprise, anticipation, love, disgust, neutral")
+
+    while True:
+        print("\nOptions:")
+        print("1. Query by emotion")
+        print("2. Show emotion distribution (Text)")
+        print("3. Show all data")
+        print("4. Search by username/user ID")
+        print("5. Visualize emotion distribution (Graph)")
+        print("6. Exit")
+
+        choice = input("Enter your choice (1-6): ").strip()
+
+        if choice == '1':
+            emotion = input("Enter emotion to search for: ").strip().lower()
+            query_by_emotion(emotion)
+        elif choice == '2':
+            print("\nEmotion Distribution (Counts):")
+            print(df['Emotion'].value_counts())
+        elif choice == '3':
+            pd.set_option('display.max_rows', None)
+            pd.set_option('display.max_columns', None)
+            print(df[['S.No.', 'User ID', 'User Name', 'feedback', 'Emotion']])
+        elif choice == '4':
+            search_by_user()
+        elif choice == '5':
+            print("\nGenerating emotion visualizations...")
+            plot_emotion_distribution()
+            plot_sentiment_pie()
+        elif choice == '6':
+            print("Exiting program...")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    main()
